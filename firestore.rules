@@ -1,0 +1,38 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Función para verificar si el usuario está autenticado
+    function isAuth() {
+      return request.auth != null;
+    }
+    
+    // Función para verificar si el usuario es dueño del documento
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+    
+    // Reglas para la colección de usuarios
+    match /users/{userId} {
+      // Cualquiera puede leer perfiles públicos
+      // Solo el dueño puede escribir su propio perfil
+      allow read: if isAuth();
+      allow write: if isOwner(userId);
+    }
+    
+    // Reglas para mensajes
+    match /messages/{messageId} {
+      // Solo los participantes de la conversación pueden leer/escribir
+      allow read, write: if isAuth() && 
+        (resource.data.senderId == request.auth.uid || 
+         resource.data.receiverId == request.auth.uid);
+    }
+    
+    // Reglas para matches
+    match /matches/{matchId} {
+      // Solo los usuarios involucrados pueden ver sus matches
+      allow read, write: if isAuth() && 
+        (resource.data.user1Id == request.auth.uid || 
+         resource.data.user2Id == request.auth.uid);
+    }
+  }
+}
